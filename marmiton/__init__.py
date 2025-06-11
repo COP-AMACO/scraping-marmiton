@@ -43,8 +43,8 @@ class Marmiton(object):
 
 		search_data = []
 
-		articles = soup.findAll("a", href=True)
-		articles = [a for a in articles if a["href"].startswith("/recettes/recette_")]
+		articles = soup.find_all("a", href=True)
+		articles = [a for a in articles if a["href"].startswith("https://www.marmiton.org/recettes/recette")]
 
 		iterarticles = iter(articles)
 		for article in iterarticles:
@@ -73,74 +73,109 @@ class Marmiton(object):
 
 	@staticmethod
 	def _get_name(soup):
+		"""
+		Returns the name of the recipe.
+		"""
 		return soup.find("h1").get_text().strip(' \t\n\r')
 
 	@staticmethod
 	def _get_ingredients(soup):
-		return [item.get_text().strip(' \t\n\r').replace("\xa0", " ") for item in soup.findAll("div", {"class": "MuiGrid-item"})]
+		"""
+		Returns a list of ingredients for the recipe.
+		"""
+		return [item.get_text().strip(' \t\n\r').replace("\xa0", " ") for item in soup.find_all("span", {"class": "ingredient-name"})]
 
 	@staticmethod
 	def _get_author(soup):
-		return soup.find("div", text="Note de l'auteur :").parent.parent.findAll("div")[0].findAll("div")[1].get_text()
+		"""
+		Returns the name of the author of the recipe.
+		"""
+		return soup.find("span", {"class": "recipe-author-note__author-name"}).get_text().strip(' \t\n\r')
 
 	@staticmethod
 	def _get_author_tip(soup):
-		return soup.find("div", text="Note de l'auteur :").parent.parent.findAll("div")[3].find_all("div")[1].get_text().replace("\xa0", " ").replace("\r\n", " ").replace("  ", " ").replace("« ", "").replace(" »", "")
+		"""
+		Returns the author's tip for the recipe.
+		"""
+		return soup.find("div", {"class": "mrtn-hide-on-print recipe-author-note"}).find("i").get_text().replace("\xa0", " ").replace("\r\n", " ").replace("  ", " ").replace("« ", "").replace(" »", "")
 
 	@staticmethod
 	def _get_steps(soup):
-		return [step.parent.parent.find("p").get_text().strip(' \t\n\r') for step in soup.find_all("h3", text=re.compile("^Étape"))]
+		"""
+		Returns a list of preparation steps for the recipe.
+		"""
+		return [step.parent.parent.find("p").get_text().strip(' \t\n\r') for step in soup.find_all("span", text=re.compile("^Étape"))]
 
 	@staticmethod
 	def _get_images(soup):
+		"""
+		Returns a list of image URLs associated with the recipe (not only the main image of the recipe).
+		"""
 		return [img.get("data-src") for img in soup.find_all("img", {"height": 150}) if img.get("data-src")]
 
 	@staticmethod
 	def _get_rate(soup):
-		return soup.find("h1").parent.next_sibling.find_all("span")[0].get_text().split("/")[0]
+		"""
+		Returns the recipe rate as a string.
+		"""
+		return soup.find("span", {"class" : "recipe-header__rating-text"}).get_text().split("/")[0]
 
 	@staticmethod
 	def _get_nb_comments(soup):
-		return soup.find("h1").parent.next_sibling.find_all("span")[1].get_text().split(" ")[0]
-
-	@staticmethod
-	def _get_total_time__difficulty__budget(soup):
-		svg_data = "M13.207 22.759a2.151 2.151 0 1 0 0 4.302 2.151 2.151 0 0 0 0-4.302z"
-		return soup.find("path", {"d": svg_data}).parent.parent.parent.get_text().split("•")
+		"""
+		Returns the number of comments on the recipe.
+		"""
+		return soup.find("div", {"class" : "recipe-header__comment"}).find("a").get_text().strip(' \t\n\r').split(" ")[0]
 
 	@classmethod
 	def _get_total_time(cls, soup):
-		return cls._get_total_time__difficulty__budget(soup)[0].replace("\xa0", " ")
+		"""
+		Returns the total time for the recipe.
+		"""
+		return soup.find_all("div", {"class": "recipe-primary__item"})[0].find("span").get_text().strip(' \t\n\r')
 
 	@classmethod
 	def _get_difficulty(cls, soup):
-		return cls._get_total_time__difficulty__budget(soup)[1]
+		"""
+		Returns the difficulty level of the recipe.
+		"""
+		return soup.find_all("div", {"class": "recipe-primary__item"})[1].find("span").get_text().strip(' \t\n\r')
 
 	@classmethod
 	def _get_budget(cls, soup):
-		return cls._get_total_time__difficulty__budget(soup)[2]
+		"""
+		Returns the budget level of the recipe.
+		"""
+		return soup.find_all("div", {"class": "recipe-primary__item"})[2].find("span").get_text().strip(' \t\n\r')
 
 	@staticmethod
 	def _get_cook_time(soup):
+		"""
+		Returns the cooking time for the recipe.
+		"""
 		return soup.find_all(text=re.compile("Cuisson"))[0].parent.next_sibling.next_sibling.get_text()
 
 	@staticmethod
 	def _get_prep_time(soup):
+		"""
+		Returns the preparation time for the recipe.
+		"""
 		return soup.find_all(text=re.compile("Préparation"))[1].parent.next_sibling.next_sibling.get_text().replace("\xa0", " ")
 
 	@staticmethod
 	def _get_recipe_quantity(soup):
-		return " ".join([span.get_text() for span in soup.find("button", {"class": "MuiIconButton-root"}).parent.find_all("span") if span.get_text()])
+		"""
+		Returns the recipe quantity or number of servings.
+		"""
+		divRecipeQuantity = soup.find("div", {"class": "mrtn-recette_ingredients-counter"})
+		return divRecipeQuantity["data-servingsnb"] + " " + divRecipeQuantity["data-servingsunit"]
 
 	@classmethod
-	def get(cls, uri):
+	def get(cls, url):
 		"""
 		'url' from 'search' method.
-		 ex. "/recettes/recette_wraps-de-poulet-et-sauce-au-curry_337319.aspx"
+		 ex. "https://www.marmiton.org/recettes/recette_boeuf-bourguignon_18889.aspx"
 		"""
-
-		base_url = "http://www.marmiton.org"
-		url = base_url + ("" if uri.startswith("/") else "/") + uri
 
 		try:
 			handler = urllib.request.HTTPSHandler(context=ssl._create_unverified_context())
@@ -177,4 +212,3 @@ class Marmiton(object):
 				data[element["name"]] = element["default_value"]
 
 		return data
-
