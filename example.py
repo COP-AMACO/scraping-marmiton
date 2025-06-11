@@ -1,12 +1,14 @@
-from marmiton import Marmiton
+from marmiton import Marmiton, RecipeNotFound
 
 # Search :
 query_options = {
-  "aqt": "Fondue savoyarde",      # Query keywords - separated by a white space
-  "dt": "platprincipal",      # Plate type : "entree", "platprincipal", "accompagnement", "amusegueule", "sauce" (optional)
-  "exp": 2,                   # Plate price : 1 -> Cheap, 2 -> Medium, 3 -> Kind of expensive (optional)
-  "dif": 2,                   # Recipe difficulty : 1 -> Very easy, 2 -> Easy, 3 -> Medium, 4 -> Advanced (optional)
-  "veg": 0,                   # Vegetarien only : 0 -> False, 1 -> True (optional)
+    "aqt": "Fondue savoyarde",  # Query keywords - separated by a white space
+    "dt": "platprincipal",      # Plate type : "entree", "platprincipal", "accompagnement", "amusegueule", "sauce" (optional)
+    "exp": 2,                   # Plate price : 1 -> Cheap, 2 -> Medium, 3 -> Kind of expensive (optional)
+    "dif": 2,                   # Recipe difficulty : 1 -> Very easy, 2 -> Easy, 3 -> Medium, 4 -> Advanced (optional)
+    "prt": 1,                   # Recipe particularity: 1 -> Vegetarian, 2 -> Gluten-free, 3 -> Vegan, 4 -> Lactose-free, 5 -> Balanced (optional)
+    "rct": 2,                   # Cooking type: 1 -> Oven, 2 -> Stovetop, 3 -> No-cook, 4 -> Microwave, 5 -> Barbecue/Plancha (optional)
+    "ttlt": 45,                 # Total time in minutes: 15, 30, or 45 (optional)
 }
 query_result = Marmiton.search(query_options)
 
@@ -14,7 +16,12 @@ query_result = Marmiton.search(query_options)
 recipe = query_result[0]
 main_recipe_url = recipe['url']
 
-detailed_recipe = Marmiton.get(main_recipe_url)  # Get the details of the first returned recipe (most relevant in our case)
+try:
+    detailed_recipe = Marmiton.get(main_recipe_url)  # Get the details of the first returned recipe (most relevant in our case)
+except RecipeNotFound as e:
+    print(f"No recipe found for '{query_options['aqt']}'")
+    import sys
+    sys.exit(0)
 
 # Display result :
 print("## %s\n" % detailed_recipe['name'])  # Name of the recipe

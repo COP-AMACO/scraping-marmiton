@@ -20,14 +20,14 @@ class Marmiton(object):
 		"""
 		Search recipes parsing the returned html data.
 		Options:
-		'aqt': string of keywords separated by a white space  (query search)
+			'aqt': string of keywords separated by a white space  (query search)
 		Optional options :
-		'dt': "entree" | "platprincipal" | "accompagnement" | "amusegueule" | "sauce"  (plate type)
-		'exp': 1 | 2 | 3  (plate expense 1: cheap, 3: expensive)
-		'dif': 1 | 2 | 3 | 4  (recipe difficultie 1: easy, 4: advanced)
-		'veg': 0 | 1  (vegetarien only: 1)
-		'rct': 0 | 1  (without cook: 1)
-		'sort': "markdesc" (rate) | "popularitydesc" (popularity) | "" (empty for relevance)
+			'dt': "accompagnement" | "amusegueule" | "boisson" | "confiserie" | "conseil" | "dessert" | "entree" | "platprincipal" | "sauce"  (plate type)
+			'exp': 1 | 2 | 3  (plate expense 1: cheap, 3: expensive)
+			'dif': 1 | 2 | 3 | 4  (recipe difficultie 1: very easy, 4: advanced)
+			'prt': 1 | 2 | 3 | 4 | 5  (recipe particularity 1: vegetarian, 2: gluten-free, 3: vegan, 4: lactose-free, 5: balanced recipes)
+			'rct': 1 | 2 | 3 | 4 | 5  (cooking type: 1: Oven, 2: Stovetop, 3: No-cook, 4: Microwave, 5: Barbecue/Plancha)
+			'ttlt': 15 | 30 | 45  (total time in minutes: less than or equal to 15, 30, or 45)
 		"""
 		base_url = "http://www.marmiton.org/recettes/recherche.aspx?"
 		query_url = urllib.parse.urlencode(query_dict)

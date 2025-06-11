@@ -56,11 +56,13 @@ from marmiton import Marmiton, RecipeNotFound
 
 # Search :
 query_options = {
-  "aqt": "boeuf bourguignon",  # Query keywords - separated by a white space
-  "dt": "platprincipal",       # Plate type : "entree", "platprincipal", "accompagnement", "amusegueule", "sauce" (optional)
-  "exp": 2,                    # Plate price : 1 -> Cheap, 2 -> Medium, 3 -> Kind of expensive (optional)
-  "dif": 2,                    # Recipe difficulty : 1 -> Very easy, 2 -> Easy, 3 -> Medium, 4 -> Advanced (optional)
-  "veg": 0,                    # Vegetarien only : 0 -> False, 1 -> True (optional)
+    "aqt": "Fondue savoyarde",  # Query keywords - separated by a white space
+    "dt": "platprincipal",      # Plate type : "entree", "platprincipal", "accompagnement", "amusegueule", "sauce" (optional)
+    "exp": 2,                   # Plate price : 1 -> Cheap, 2 -> Medium, 3 -> Kind of expensive (optional)
+    "dif": 2,                   # Recipe difficulty : 1 -> Very easy, 2 -> Easy, 3 -> Medium, 4 -> Advanced (optional)
+    "prt": 1,                   # Recipe particularity: 1 -> Vegetarian, 2 -> Gluten-free, 3 -> Vegan, 4 -> Lactose-free, 5 -> Balanced (optional)
+    "rct": 2,                   # Cooking type: 1 -> Oven, 2 -> Stovetop, 3 -> No-cook, 4 -> Microwave, 5 -> Barbecue/Plancha (optional)
+    "ttlt": 45,                 # Total time in minutes: 15, 30, or 45 (optional)
 }
 query_result = Marmiton.search(query_options)
 
