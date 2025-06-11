@@ -1,4 +1,3 @@
-
 from setuptools import setup
 
 setup(
@@ -12,4 +11,4 @@ setup(
 	license='MIT',
 	zip_safe=False,
 	install_requires=['bs4'],
-	)
+)
