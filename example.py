@@ -3,7 +3,7 @@ from marmiton import Marmiton, RecipeNotFound
 # Search :
 query_options = {
     "aqt": "Fondue savoyarde",  # Query keywords - separated by a white space
-    "dt": "platprincipal",      # Plate type : "entree", "platprincipal", "accompagnement", "amusegueule", "sauce" (optional)
+    "dt": "platprincipal",      # Plate type : "accompagnement", "amusegueule", "boisson", "confiserie", "conseil", "dessert", "entree", "platprincipal", "sauce"
     "exp": 2,                   # Plate price : 1 -> Cheap, 2 -> Medium, 3 -> Kind of expensive (optional)
     "dif": 2,                   # Recipe difficulty : 1 -> Very easy, 2 -> Easy, 3 -> Medium, 4 -> Advanced (optional)
     "prt": 1,                   # Recipe particularity: 1 -> Vegetarian, 2 -> Gluten-free, 3 -> Vegan, 4 -> Lactose-free, 5 -> Balanced (optional)
