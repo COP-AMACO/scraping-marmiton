@@ -10,7 +10,14 @@ query_options = {
     "rct": 2,                   # Cooking type: 1 -> Oven, 2 -> Stovetop, 3 -> No-cook, 4 -> Microwave, 5 -> Barbecue/Plancha (optional)
     "ttlt": 45,                 # Total time in minutes: 15, 30, or 45 (optional)
 }
-query_result = Marmiton.search(query_options)
+try:
+    # Search for recipes with the given options
+    query_result = Marmiton.search(query_options)
+except RecipeNotFound as e:
+    print(f"No recipe found for '{query_options['aqt']}'")
+    print(e)
+    import sys
+    sys.exit(0)
 
 # Get :
 recipe = query_result[0]
