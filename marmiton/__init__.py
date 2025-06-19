@@ -34,10 +34,13 @@ class Marmiton(object):
 
 		url = base_url + query_url
 
-		handler = urllib.request.HTTPSHandler(context=ssl._create_unverified_context())
-		opener = urllib.request.build_opener(handler)
-		response = opener.open(url)
-		html_content = response.read()
+		try:
+			handler = urllib.request.HTTPSHandler(context=ssl._create_unverified_context())
+			opener = urllib.request.build_opener(handler)
+			response = opener.open(url)
+			html_content = response.read()
+		except Exception as e:
+			raise RecipeNotFound("Error: " + str(e))
 
 		soup = BeautifulSoup(html_content, 'html.parser')
 
@@ -77,6 +80,70 @@ class Marmiton(object):
 		Returns the name of the recipe.
 		"""
 		return soup.find("h1").get_text().strip(' \t\n\r')
+	
+	@staticmethod
+	def _get_plate_type(soup):
+		"""
+		Returns the plate type of the recipe.
+		Plate types are: "accompagnement", "amusegueule", "boisson", "confiserie", "dessert", "entree", "platprincipal", "sauce" or ""
+		"""
+		tagsList = soup.find_all(True, {"class": "modal__tag"})
+		for tag in tagsList:
+			tagText = tag.get_text().strip(' \t\n\r').lower()
+
+			if tagText == "accompagnement":
+				return "accompagnement"
+			elif tagText == "amuse-gueule":
+				return "amusegueule"
+			elif tagText == "boisson":
+				return "boisson"
+			elif tagText == "confiserie":
+				return "confiserie"
+			elif tagText == "dessert":
+				return "dessert"
+			elif tagText == "entrée":
+				return "entree"
+			elif tagText == "plat principal":
+				return "platprincipal"
+			elif tagText == "sauce":
+				return "sauce"
+		return ""
+
+	@staticmethod
+	def _get_is_vegetarian(soup):
+		"""
+		Returns True if the recipe is vegetarian, False otherwise.
+		"""
+		tagsList = soup.find_all(True, {"class": "modal__tag"})
+		for tag in tagsList:
+			tagText = tag.get_text().strip(' \t\n\r').lower()
+			if tagText == "vegetarian":
+				return True
+		return False
+	
+	@staticmethod
+	def _get_is_gluten_free(soup):
+			"""
+			Returns True if the recipe is gluten-free, False otherwise.
+			"""
+			tagsList = soup.find_all(True, {"class": "modal__tag"})
+			for tag in tagsList:
+					tagText = tag.get_text().strip(' \t\n\r').lower()
+					if tagText == "gluten free":
+							return True
+			return False
+
+	@staticmethod
+	def _get_is_vegan(soup):
+			"""
+			Returns True if the recipe is vegan, False otherwise.
+			"""
+			tagsList = soup.find_all(True, {"class": "modal__tag"})
+			for tag in tagsList:
+					tagText = tag.get_text().strip(' \t\n\r').lower()
+					if tagText == "recettes vegan":
+							return True
+			return False
 
 	@staticmethod
 	def _get_ingredients(soup):
@@ -113,6 +180,19 @@ class Marmiton(object):
 		"""
 		return [img.get("data-src") for img in soup.find_all("img", {"height": 150}) if img.get("data-src")]
 
+	@staticmethod
+	def _get_image_recipe(soup):
+		"""
+		Returns the main image URL of the recipe.
+		"""
+		# Main picture of the recipe (some recipes do not have a main picture)
+		imgComponent = soup.find("img", {"id": "recipe-media-viewer-main-picture"})
+		if imgComponent is not None:
+			return imgComponent.get("data-src")
+		# Return the first thumbnail of the recipe
+		# There are multiple pictures resolution, so we take the last one (the biggest one)
+		return soup.find("img", {"id": "recipe-media-viewer-thumbnail-0"}).get("data-srcset").split(",")[-1].strip().split(" ")[0]
+	
 	@staticmethod
 	def _get_rate(soup):
 		"""
@@ -189,10 +269,15 @@ class Marmiton(object):
 
 		elements = [
 			{"name": "name", "default_value": ""},
+			{"name": "plate_type", "default_value": ""},
+			{"name": "is_vegetarian", "default_value": False},
+			{"name": "is_gluten_free", "default_value": False},
+			{"name": "is_vegan", "default_value": False},
 			{"name": "ingredients", "default_value": []},
 			{"name": "author", "default_value": "Anonyme"},
 			{"name": "author_tip", "default_value": ""},
 			{"name": "steps", "default_value": []},
+			{"name": "image_recipe", "default_value": ""},
 			{"name": "images", "default_value": []},
 			{"name": "rate", "default_value": ""},
 			{"name": "difficulty", "default_value": ""},
