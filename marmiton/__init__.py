@@ -84,10 +84,10 @@ class Marmiton(object):
 		return soup.find("h1").get_text().strip(' \t\n\r')
 	
 	@staticmethod
-	def _get_type(soup):
+	def _get_plate_type(soup):
 		"""
 		Returns the type of the recipe.
-		Types are: "accompagnement", "amusegueule", "boisson", "confiserie", "dessert", "entree", "platprincipal", "sauce" or ""
+		Plate types are: "accompagnement", "amusegueule", "boisson", "confiserie", "dessert", "entree", "platprincipal", "sauce" or ""
 		"""
 		tagsList = soup.find_all(True, {"class": "modal__tag"})
 		for tag in tagsList:
@@ -291,7 +291,7 @@ class Marmiton(object):
 
 		elements = [
 			{"name": "name", "default_value": ""},
-			{"name": "type", "default_value": ""},
+			{"name": "plate_type", "default_value": ""},
 			{"name": "is_vegetarian", "default_value": False},
 			{"name": "is_gluten_free", "default_value": False},
 			{"name": "is_vegan", "default_value": False},
