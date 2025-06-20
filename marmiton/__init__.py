@@ -8,6 +8,8 @@ import urllib.request
 import re
 import ssl
 
+from marmiton.parse_duration import parse_duration_to_minutes
+
 
 class RecipeNotFound(Exception):
 	pass
@@ -82,15 +84,14 @@ class Marmiton(object):
 		return soup.find("h1").get_text().strip(' \t\n\r')
 	
 	@staticmethod
-	def _get_plate_type(soup):
+	def _get_type(soup):
 		"""
-		Returns the plate type of the recipe.
-		Plate types are: "accompagnement", "amusegueule", "boisson", "confiserie", "dessert", "entree", "platprincipal", "sauce" or ""
+		Returns the type of the recipe.
+		Types are: "accompagnement", "amusegueule", "boisson", "confiserie", "dessert", "entree", "platprincipal", "sauce" or ""
 		"""
 		tagsList = soup.find_all(True, {"class": "modal__tag"})
 		for tag in tagsList:
 			tagText = tag.get_text().strip(' \t\n\r').lower()
-
 			if tagText == "accompagnement":
 				return "accompagnement"
 			elif tagText == "amuse-gueule":
@@ -174,13 +175,6 @@ class Marmiton(object):
 		return [step.parent.parent.find("p").get_text().strip(' \t\n\r') for step in soup.find_all("span", text=re.compile("^Étape"))]
 
 	@staticmethod
-	def _get_images(soup):
-		"""
-		Returns a list of image URLs associated with the recipe (not only the main image of the recipe).
-		"""
-		return [img.get("data-src") for img in soup.find_all("img", {"height": 150}) if img.get("data-src")]
-
-	@staticmethod
 	def _get_image_recipe(soup):
 		"""
 		Returns the main image URL of the recipe.
@@ -194,53 +188,74 @@ class Marmiton(object):
 		return soup.find("img", {"id": "recipe-media-viewer-thumbnail-0"}).get("data-srcset").split(",")[-1].strip().split(" ")[0]
 	
 	@staticmethod
+	def _get_images(soup):
+		"""
+		Returns a list of image URLs associated with the recipe (not only the main image of the recipe).
+		"""
+		return [img.get("data-src") for img in soup.find_all("img", {"height": 150}) if img.get("data-src")]
+
+	@staticmethod
 	def _get_rate(soup):
 		"""
 		Returns the recipe rate as a string.
 		"""
-		return soup.find("span", {"class" : "recipe-header__rating-text"}).get_text().split("/")[0]
-
-	@staticmethod
-	def _get_nb_comments(soup):
-		"""
-		Returns the number of comments on the recipe.
-		"""
-		return soup.find("div", {"class" : "recipe-header__comment"}).find("a").get_text().strip(' \t\n\r').split(" ")[0]
-
-	@classmethod
-	def _get_total_time(cls, soup):
-		"""
-		Returns the total time for the recipe.
-		"""
-		return soup.find_all("div", {"class": "recipe-primary__item"})[0].find("span").get_text().strip(' \t\n\r')
+		return float(soup.find("span", {"class" : "recipe-header__rating-text"}).get_text().split("/")[0])
 
 	@classmethod
 	def _get_difficulty(cls, soup):
 		"""
 		Returns the difficulty level of the recipe.
 		"""
-		return soup.find_all("div", {"class": "recipe-primary__item"})[1].find("span").get_text().strip(' \t\n\r')
+		difficulty_text = soup.find_all("div", {"class": "recipe-primary__item"})[1].find("span").get_text().strip(' \t\n\r')
+		if difficulty_text == "très facile":
+			return "very_easy"
+		elif difficulty_text == "facile":
+			return "easy"
+		elif difficulty_text == "moyenne":
+			return "medium"
+		elif difficulty_text == "difficile":
+			return "advanced"
+		else:
+			return ""
 
 	@classmethod
 	def _get_budget(cls, soup):
 		"""
 		Returns the budget level of the recipe.
 		"""
-		return soup.find_all("div", {"class": "recipe-primary__item"})[2].find("span").get_text().strip(' \t\n\r')
+		budget_text = soup.find_all("div", {"class": "recipe-primary__item"})[2].find("span").get_text().strip(' \t\n\r')
+		if budget_text == "bon marché":
+			return "cheap"
+		elif budget_text == "moyen":
+			return "medium"
+		elif budget_text == "assez cher":
+			return "expensive"
+		else:
+			return ""
 
 	@staticmethod
-	def _get_cook_time(soup):
+	def _get_cook_time_min(soup):
 		"""
-		Returns the cooking time for the recipe.
+		Returns the cooking time for the recipe (in minutes).
 		"""
-		return soup.find_all(text=re.compile("Cuisson"))[0].parent.next_sibling.next_sibling.get_text()
+		cook_time = soup.find_all(text=re.compile("Cuisson"))[0].parent.next_sibling.next_sibling.get_text()
+		return parse_duration_to_minutes(cook_time)
 
 	@staticmethod
-	def _get_prep_time(soup):
+	def _get_prep_time_min(soup):
 		"""
-		Returns the preparation time for the recipe.
+		Returns the preparation time for the recipe (in minutes).
 		"""
-		return soup.find_all(text=re.compile("Préparation"))[1].parent.next_sibling.next_sibling.get_text().replace("\xa0", " ")
+		preparation_time = soup.find_all(text=re.compile("Préparation"))[1].parent.next_sibling.next_sibling.get_text().replace("\xa0", " ")
+		return parse_duration_to_minutes(preparation_time)
+	
+	@classmethod
+	def _get_total_time_min(cls, soup):
+		"""
+		Returns the total time for the recipe (in minutes).
+		"""
+		total_time = soup.find_all("div", {"class": "recipe-primary__item"})[0].find("span").get_text().strip(' \t\n\r')
+		return parse_duration_to_minutes(total_time)
 
 	@staticmethod
 	def _get_recipe_quantity(soup):
@@ -249,6 +264,13 @@ class Marmiton(object):
 		"""
 		divRecipeQuantity = soup.find("div", {"class": "mrtn-recette_ingredients-counter"})
 		return divRecipeQuantity["data-servingsnb"] + " " + divRecipeQuantity["data-servingsunit"]
+	
+	@staticmethod
+	def _get_nb_comments(soup):
+		"""
+		Returns the number of comments on the recipe.
+		"""
+		return int(soup.find("div", {"class" : "recipe-header__comment"}).find("a").get_text().strip(' \t\n\r').split(" ")[0])
 
 	@classmethod
 	def get(cls, url):
@@ -269,7 +291,7 @@ class Marmiton(object):
 
 		elements = [
 			{"name": "name", "default_value": ""},
-			{"name": "plate_type", "default_value": ""},
+			{"name": "type", "default_value": ""},
 			{"name": "is_vegetarian", "default_value": False},
 			{"name": "is_gluten_free", "default_value": False},
 			{"name": "is_vegan", "default_value": False},
@@ -279,12 +301,12 @@ class Marmiton(object):
 			{"name": "steps", "default_value": []},
 			{"name": "image_recipe", "default_value": ""},
 			{"name": "images", "default_value": []},
-			{"name": "rate", "default_value": ""},
+			{"name": "rate", "default_value": 0.0},
 			{"name": "difficulty", "default_value": ""},
 			{"name": "budget", "default_value": ""},
-			{"name": "cook_time", "default_value": ""},
-			{"name": "prep_time", "default_value": ""},
-			{"name": "total_time", "default_value": ""},
+			{"name": "cook_time_min", "default_value": 0},
+			{"name": "prep_time_min", "default_value": 0},
+			{"name": "total_time_min", "default_value": 0},
 			{"name": "recipe_quantity", "default_value": ""},
 			{"name": "nb_comments", "default_value": 0},
 		]
@@ -295,5 +317,4 @@ class Marmiton(object):
 				data[element["name"]] = getattr(cls, "_get_" + element["name"])(soup)
 			except:
 				data[element["name"]] = element["default_value"]
-
 		return data
