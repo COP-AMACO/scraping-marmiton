@@ -57,10 +57,7 @@ class Marmiton(object):
 			try:
 				data["name"] = article.find("h4").get_text().strip(' \t\n\r')
 				data["url"] = article['href']
-				try:
-					data["rate"] = article.find("span").get_text().split("/")[0]
-				except Exception as e0:
-					pass
+				# Image
 				try:
 					data["image"] = article.find('img')['data-src']
 				except Exception as e1:
@@ -69,6 +66,19 @@ class Marmiton(object):
 					except Exception as e1:
 						pass
 					pass
+				# Rate
+				try:
+					data["rate"] = float(article.find("div", {"class": "mrtn-home-rating__rating"}).get_text().strip(' \t\n\r').split("/")[0])
+				except Exception as e0:
+					data["rate"] = 0.0
+					pass
+				# Number of comments
+				try:
+					data["nb_comments"] = int(article.find("div", {"class": "mrtn-home-rating__nbreviews"}).get_text().strip(' \t\n\r').split(" ")[0])
+				except Exception as e1:
+					data["nb_comments"] = 0
+					pass
+
 			except Exception as e2:
 				pass
 			if data:
@@ -316,7 +326,7 @@ class Marmiton(object):
 			{"name": "author_tip", "default_value": ""},
 			{"name": "steps", "default_value": []},
 			{"name": "image_recipe", "default_value": ""},
-			#{"name": "images", "default_value": []},
+			{"name": "images", "default_value": []},
 			{"name": "rate", "default_value": 0.0},
 			{"name": "difficulty", "default_value": ""},
 			{"name": "budget", "default_value": ""},
