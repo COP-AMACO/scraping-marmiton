@@ -149,9 +149,25 @@ class Marmiton(object):
 	@staticmethod
 	def _get_ingredients(soup):
 		"""
-		Returns a list of ingredients for the recipe.
+		Returns a list of ingredients for the recipe. Each item is a dictionary with keys: 
+			- 'name': the name of the ingredient
+			- 'quantity': the quantity of the ingredient
+			- 'unit': the unit of measurement for the ingredient
+			- 'image': the image URL of the ingredient
 		"""
-		return [item.get_text().strip(' \t\n\r').replace("\xa0", " ") for item in soup.find_all("span", {"class": "ingredient-name"})]
+		ingredients = []
+		for element in soup.find_all("div", {"class": "card-ingredient"}):
+			ingredient_name = element.find("span", {"class": "ingredient-name"})
+			ingredient_quantity = element.find("span", {"class": "count"})
+			ingredient_unit = element.find("span", {"class": "unit"})
+			ingredient_img = element.find("img")
+			ingredients.append({
+				"name": ingredient_name.get_text().strip(' \t\n\r') if ingredient_name else "",
+				"quantity": ingredient_quantity.get_text().strip(' \t\n\r') if ingredient_quantity else "",
+				"unit": ingredient_unit.get_text().strip(' \t\n\r') if ingredient_unit else "",
+				"image": ingredient_img.get("data-srcset").split(",")[-1].strip().split(" ")[0] if ingredient_img and ingredient_img.get("data-srcset") else "",
+			})
+		return ingredients
 
 	@staticmethod
 	def _get_author(soup):
@@ -300,7 +316,7 @@ class Marmiton(object):
 			{"name": "author_tip", "default_value": ""},
 			{"name": "steps", "default_value": []},
 			{"name": "image_recipe", "default_value": ""},
-			{"name": "images", "default_value": []},
+			#{"name": "images", "default_value": []},
 			{"name": "rate", "default_value": 0.0},
 			{"name": "difficulty", "default_value": ""},
 			{"name": "budget", "default_value": ""},
