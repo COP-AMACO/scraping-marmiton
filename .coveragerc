@@ -1,0 +1,8 @@
+[run]
+source = .
+omit = .tox/*
+       setup.py
+       example.py
+       plats.py
+       main.py
+       marmiton/__init__.py

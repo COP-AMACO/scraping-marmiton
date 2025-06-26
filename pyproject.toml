@@ -1,0 +1,12 @@
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+exclude = [".venv", ".tox", "__pypackages__"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I"]   # E = PEP8, W = warnings, F = erreurs pyflakes, I = tri des imports
+fixable = ["E", "W", "F", "I"]  # Autoriser les corrections automatiques
+
+[tool.docformatter]
+wrap-summaries = 88
+wrap-descriptions = 88
