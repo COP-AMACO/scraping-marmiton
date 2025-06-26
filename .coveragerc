@@ -6,3 +6,4 @@ omit = .tox/*
        plats.py
        main.py
        marmiton/__init__.py
+       tests/__init__.py
