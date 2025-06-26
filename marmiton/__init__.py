@@ -1,346 +1,423 @@
 # -*- coding: utf-8 -*-
 
-from bs4 import BeautifulSoup
-
+import re
+import ssl
 import urllib.parse
 import urllib.request
 
-import re
-import ssl
+from bs4 import BeautifulSoup
 
 from marmiton.parse_duration import parse_duration_to_minutes
 
 
 class RecipeNotFound(Exception):
-	pass
+    pass
 
 
 class Marmiton(object):
+    @staticmethod
+    def search(query_dict):
+        """Search recipes by parsing the returned HTML data.
 
-	@staticmethod
-	def search(query_dict):
-		"""
-		Search recipes parsing the returned html data.
-		Options:
-			'aqt': string of keywords separated by a white space  (query search)
-		Optional options :
-			'dt': "accompagnement" | "amusegueule" | "boisson" | "confiserie" | "conseil" | "dessert" | "entree" | "platprincipal" | "sauce"  (plate type)
-			'exp': 1 | 2 | 3  (plate expense 1: cheap, 3: expensive)
-			'dif': 1 | 2 | 3 | 4  (recipe difficultie 1: very easy, 4: advanced)
-			'prt': 1 | 2 | 3 | 4 | 5  (recipe particularity 1: vegetarian, 2: gluten-free, 3: vegan, 4: lactose-free, 5: balanced recipes)
-			'rct': 1 | 2 | 3 | 4 | 5  (cooking type: 1: Oven, 2: Stovetop, 3: No-cook, 4: Microwave, 5: Barbecue/Plancha)
-			'ttlt': 15 | 30 | 45  (total time in minutes: less than or equal to 15, 30, or 45)
-		"""
-		base_url = "http://www.marmiton.org/recettes/recherche.aspx?"
-		query_url = urllib.parse.urlencode(query_dict)
+        Options:
+            'aqt': string of keywords separated by a white space (query search)
 
-		url = base_url + query_url
+        Optional options:
+            'dt': "accompagnement" | "amusegueule" | "boisson" | "confiserie" |
+                  "conseil" | "dessert" | "entree" | "platprincipal" | "sauce"
+                  (plate type)
 
-		try:
-			handler = urllib.request.HTTPSHandler(context=ssl._create_unverified_context())
-			opener = urllib.request.build_opener(handler)
-			response = opener.open(url)
-			html_content = response.read()
-		except Exception as e:
-			raise RecipeNotFound("Error: " + str(e))
+            'exp': 1 | 2 | 3
+                   (plate expense: 1 = cheap, 2 = medium, 3 = expensive)
 
-		soup = BeautifulSoup(html_content, 'html.parser')
+            'dif': 1 | 2 | 3 | 4
+                   (recipe difficulty: 1 = very easy, ..., 4 = advanced)
 
-		search_data = []
+            'prt': 1 | 2 | 3 | 4 | 5
+                   (recipe particularity: 1 = vegetarian, 2 = gluten-free,
+                   3 = vegan,  4 = lactose-free, 5 = balanced)
 
-		articles = soup.find_all("a", href=True)
-		articles = [a for a in articles if a["href"].startswith("https://www.marmiton.org/recettes/recette")]
+            'rct': 1 | 2 | 3 | 4 | 5
+                   (cooking type: 1 = Oven, 2 = Stovetop, 3 = No-cook,
+                   4 = Microwave, 5 = Barbecue/Plancha)
 
-		iterarticles = iter(articles)
-		for article in iterarticles:
-			data = {}
-			try:
-				data["name"] = article.find("h4").get_text().strip(' \t\n\r')
-				data["url"] = article['href']
-				# Image
-				try:
-					data["image"] = article.find('img')['data-src']
-				except Exception as e1:
-					try:
-						data["image"] = article.find('img')['src']
-					except Exception as e1:
-						pass
-					pass
-				# Rate
-				try:
-					data["rate"] = float(article.find("div", {"class": "mrtn-home-rating__rating"}).get_text().strip(' \t\n\r').split("/")[0])
-				except Exception as e0:
-					data["rate"] = 0.0
-					pass
-				# Number of comments
-				try:
-					data["nb_comments"] = int(article.find("div", {"class": "mrtn-home-rating__nbreviews"}).get_text().strip(' \t\n\r').split(" ")[0])
-				except Exception as e1:
-					data["nb_comments"] = 0
-					pass
+            'ttlt': 15 | 30 | 45
+                    (total time in minutes: <= 15, 30, or 45)
+        """
 
-			except Exception as e2:
-				pass
-			if data:
-				search_data.append(data)
+        base_url = "http://www.marmiton.org/recettes/recherche.aspx?"
+        query_url = urllib.parse.urlencode(query_dict)
 
-		return search_data
+        url = base_url + query_url
 
-	@staticmethod
-	def _get_name(soup):
-		"""
-		Returns the name of the recipe.
-		"""
-		return soup.find("h1").get_text().strip(' \t\n\r')
-	
-	@staticmethod
-	def _get_plate_type(soup):
-		"""
-		Returns the type of the recipe.
-		Plate types are: "accompagnement", "amusegueule", "boisson", "confiserie", "dessert", "entree", "platprincipal", "sauce" or ""
-		"""
-		tagsList = soup.find_all(True, {"class": "modal__tag"})
-		for tag in tagsList:
-			tagText = tag.get_text().strip(' \t\n\r').lower()
-			if tagText == "accompagnement":
-				return "accompagnement"
-			elif tagText == "amuse-gueule":
-				return "amusegueule"
-			elif tagText == "boisson":
-				return "boisson"
-			elif tagText == "confiserie":
-				return "confiserie"
-			elif tagText == "dessert":
-				return "dessert"
-			elif tagText == "entrée":
-				return "entree"
-			elif tagText == "plat principal":
-				return "platprincipal"
-			elif tagText == "sauce":
-				return "sauce"
-		return ""
+        try:
+            handler = urllib.request.HTTPSHandler(
+                context=ssl._create_unverified_context()
+            )
+            opener = urllib.request.build_opener(handler)
+            response = opener.open(url)
+            html_content = response.read()
+        except Exception as e:
+            raise RecipeNotFound("Error: " + str(e))
 
-	@staticmethod
-	def _get_is_vegetarian(soup):
-		"""
-		Returns True if the recipe is vegetarian, False otherwise.
-		"""
-		tagsList = soup.find_all(True, {"class": "modal__tag"})
-		for tag in tagsList:
-			tagText = tag.get_text().strip(' \t\n\r').lower()
-			if tagText == "vegetarian":
-				return True
-		return False
-	
-	@staticmethod
-	def _get_is_gluten_free(soup):
-			"""
-			Returns True if the recipe is gluten-free, False otherwise.
-			"""
-			tagsList = soup.find_all(True, {"class": "modal__tag"})
-			for tag in tagsList:
-					tagText = tag.get_text().strip(' \t\n\r').lower()
-					if tagText == "gluten free":
-							return True
-			return False
+        soup = BeautifulSoup(html_content, "html.parser")
 
-	@staticmethod
-	def _get_is_vegan(soup):
-			"""
-			Returns True if the recipe is vegan, False otherwise.
-			"""
-			tagsList = soup.find_all(True, {"class": "modal__tag"})
-			for tag in tagsList:
-					tagText = tag.get_text().strip(' \t\n\r').lower()
-					if tagText == "recettes vegan":
-							return True
-			return False
+        search_data = []
 
-	@staticmethod
-	def _get_ingredients(soup):
-		"""
-		Returns a list of ingredients for the recipe. Each item is a dictionary with keys: 
-			- 'name': the name of the ingredient
-			- 'quantity': the quantity of the ingredient
-			- 'unit': the unit of measurement for the ingredient
-			- 'image': the image URL of the ingredient
-		"""
-		ingredients = []
-		for element in soup.find_all("div", {"class": "card-ingredient"}):
-			ingredient_name = element.find("span", {"class": "ingredient-name"})
-			ingredient_quantity = element.find("span", {"class": "count"})
-			ingredient_unit = element.find("span", {"class": "unit"})
-			ingredient_img = element.find("img")
-			ingredients.append({
-				"name": ingredient_name.get_text().strip(' \t\n\r') if ingredient_name else "",
-				"quantity": ingredient_quantity.get_text().strip(' \t\n\r') if ingredient_quantity else "",
-				"unit": ingredient_unit.get_text().strip(' \t\n\r') if ingredient_unit else "",
-				"image": ingredient_img.get("data-srcset").split(",")[-1].strip().split(" ")[0] if ingredient_img and ingredient_img.get("data-srcset") else "",
-			})
-		return ingredients
+        articles = soup.find_all("a", href=True)
+        articles = [
+            a
+            for a in articles
+            if a["href"].startswith("https://www.marmiton.org/recettes/recette")
+        ]
 
-	@staticmethod
-	def _get_author(soup):
-		"""
-		Returns the name of the author of the recipe.
-		"""
-		return soup.find("span", {"class": "recipe-author-note__author-name"}).get_text().strip(' \t\n\r')
+        iterarticles = iter(articles)
+        for article in iterarticles:
+            data = {}
+            try:
+                data["name"] = article.find("h4").get_text().strip(" \t\n\r")
+                data["url"] = article["href"]
+                # Image
+                try:
+                    data["image"] = article.find("img")["data-src"]
+                except Exception:
+                    try:
+                        data["image"] = article.find("img")["src"]
+                    except Exception:
+                        pass
+                    pass
+                # Rate
+                try:
+                    data["rate"] = float(
+                        article.find("div", {"class": "mrtn-home-rating__rating"})
+                        .get_text()
+                        .strip(" \t\n\r")
+                        .split("/")[0]
+                    )
+                except Exception:
+                    data["rate"] = 0.0
+                    pass
+                # Number of comments
+                try:
+                    data["nb_comments"] = int(
+                        article.find("div", {"class": "mrtn-home-rating__nbreviews"})
+                        .get_text()
+                        .strip(" \t\n\r")
+                        .split(" ")[0]
+                    )
+                except Exception:
+                    data["nb_comments"] = 0
+                    pass
 
-	@staticmethod
-	def _get_author_tip(soup):
-		"""
-		Returns the author's tip for the recipe.
-		"""
-		return soup.find("div", {"class": "mrtn-hide-on-print recipe-author-note"}).find("i").get_text().replace("\xa0", " ").replace("\r\n", " ").replace("  ", " ").replace("« ", "").replace(" »", "")
+            except Exception:
+                pass
+            if data:
+                search_data.append(data)
 
-	@staticmethod
-	def _get_steps(soup):
-		"""
-		Returns a list of preparation steps for the recipe.
-		"""
-		return [step.parent.parent.find("p").get_text().strip(' \t\n\r') for step in soup.find_all("span", text=re.compile("^Étape"))]
+        return search_data
 
-	@staticmethod
-	def _get_image_recipe(soup):
-		"""
-		Returns the main image URL of the recipe.
-		"""
-		# Main picture of the recipe (some recipes do not have a main picture)
-		imgComponent = soup.find("img", {"id": "recipe-media-viewer-main-picture"})
-		if imgComponent is not None:
-			return imgComponent.get("data-src")
-		# Return the first thumbnail of the recipe
-		# There are multiple pictures resolution, so we take the last one (the biggest one)
-		return soup.find("img", {"id": "recipe-media-viewer-thumbnail-0"}).get("data-srcset").split(",")[-1].strip().split(" ")[0]
-	
-	@staticmethod
-	def _get_images(soup):
-		"""
-		Returns a list of image URLs associated with the recipe (not only the main image of the recipe).
-		"""
-		return [img.get("data-src") for img in soup.find_all("img", {"height": 150}) if img.get("data-src")]
+    @staticmethod
+    def _get_name(soup):
+        """Returns the name of the recipe."""
+        return soup.find("h1").get_text().strip(" \t\n\r")
 
-	@staticmethod
-	def _get_rate(soup):
-		"""
-		Returns the recipe rate as a string.
-		"""
-		return float(soup.find("span", {"class" : "recipe-header__rating-text"}).get_text().split("/")[0])
+    @staticmethod
+    def _get_plate_type(soup):
+        """Returns the type of the recipe.
 
-	@classmethod
-	def _get_difficulty(cls, soup):
-		"""
-		Returns the difficulty level of the recipe.
-		"""
-		difficulty_text = soup.find_all("div", {"class": "recipe-primary__item"})[1].find("span").get_text().strip(' \t\n\r')
-		if difficulty_text == "très facile":
-			return "very_easy"
-		elif difficulty_text == "facile":
-			return "easy"
-		elif difficulty_text == "moyenne":
-			return "medium"
-		elif difficulty_text == "difficile":
-			return "advanced"
-		else:
-			return ""
+        Plate types are: "accompagnement", "amusegueule", "boisson", "confiserie",
+                        "dessert", "entree", "platprincipal", "sauce" or ""
+        """
+        tagsList = soup.find_all(True, {"class": "modal__tag"})
+        for tag in tagsList:
+            tagText = tag.get_text().strip(" \t\n\r").lower()
+            if tagText == "accompagnement":
+                return "accompagnement"
+            elif tagText == "amuse-gueule":
+                return "amusegueule"
+            elif tagText == "boisson":
+                return "boisson"
+            elif tagText == "confiserie":
+                return "confiserie"
+            elif tagText == "dessert":
+                return "dessert"
+            elif tagText == "entrée":
+                return "entree"
+            elif tagText == "plat principal":
+                return "platprincipal"
+            elif tagText == "sauce":
+                return "sauce"
+        return ""
 
-	@classmethod
-	def _get_budget(cls, soup):
-		"""
-		Returns the budget level of the recipe.
-		"""
-		budget_text = soup.find_all("div", {"class": "recipe-primary__item"})[2].find("span").get_text().strip(' \t\n\r')
-		if budget_text == "bon marché":
-			return "cheap"
-		elif budget_text == "moyen":
-			return "medium"
-		elif budget_text == "assez cher":
-			return "expensive"
-		else:
-			return ""
+    @staticmethod
+    def _get_is_vegetarian(soup):
+        """Returns True if the recipe is vegetarian, False otherwise."""
+        tagsList = soup.find_all(True, {"class": "modal__tag"})
+        for tag in tagsList:
+            tagText = tag.get_text().strip(" \t\n\r").lower()
+            if tagText == "vegetarian":
+                return True
+        return False
 
-	@staticmethod
-	def _get_cook_time_min(soup):
-		"""
-		Returns the cooking time for the recipe (in minutes).
-		"""
-		cook_time = soup.find_all(text=re.compile("Cuisson"))[0].parent.next_sibling.next_sibling.get_text()
-		return parse_duration_to_minutes(cook_time)
+    @staticmethod
+    def _get_is_gluten_free(soup):
+        """Returns True if the recipe is gluten-free, False otherwise."""
+        tagsList = soup.find_all(True, {"class": "modal__tag"})
+        for tag in tagsList:
+            tagText = tag.get_text().strip(" \t\n\r").lower()
+            if tagText == "gluten free":
+                return True
+        return False
 
-	@staticmethod
-	def _get_prep_time_min(soup):
-		"""
-		Returns the preparation time for the recipe (in minutes).
-		"""
-		preparation_time = soup.find_all(text=re.compile("Préparation"))[1].parent.next_sibling.next_sibling.get_text().replace("\xa0", " ")
-		return parse_duration_to_minutes(preparation_time)
-	
-	@classmethod
-	def _get_total_time_min(cls, soup):
-		"""
-		Returns the total time for the recipe (in minutes).
-		"""
-		total_time = soup.find_all("div", {"class": "recipe-primary__item"})[0].find("span").get_text().strip(' \t\n\r')
-		return parse_duration_to_minutes(total_time)
+    @staticmethod
+    def _get_is_vegan(soup):
+        """Returns True if the recipe is vegan, False otherwise."""
+        tagsList = soup.find_all(True, {"class": "modal__tag"})
+        for tag in tagsList:
+            tagText = tag.get_text().strip(" \t\n\r").lower()
+            if tagText == "recettes vegan":
+                return True
+        return False
 
-	@staticmethod
-	def _get_recipe_quantity(soup):
-		"""
-		Returns the recipe quantity or number of servings.
-		"""
-		divRecipeQuantity = soup.find("div", {"class": "mrtn-recette_ingredients-counter"})
-		return divRecipeQuantity["data-servingsnb"] + " " + divRecipeQuantity["data-servingsunit"]
-	
-	@staticmethod
-	def _get_nb_comments(soup):
-		"""
-		Returns the number of comments on the recipe.
-		"""
-		return int(soup.find("div", {"class" : "recipe-header__comment"}).find("a").get_text().strip(' \t\n\r').split(" ")[0])
+    @staticmethod
+    def _get_ingredients(soup):
+        """Returns a list of ingredients for the recipe. Each item is a dictionary with
+        keys:
 
-	@classmethod
-	def get(cls, url):
-		"""
-		'url' from 'search' method.
-		 ex. "https://www.marmiton.org/recettes/recette_boeuf-bourguignon_18889.aspx"
-		"""
+        - 'name': the name of the ingredient
+        - 'quantity': the quantity of the ingredient
+        - 'unit': the unit of measurement for the ingredient
+        - 'image': the image URL of the ingredient
+        """
+        ingredients = []
+        for element in soup.find_all("div", {"class": "card-ingredient"}):
+            ingredient_name = element.find("span", {"class": "ingredient-name"})
+            ingredient_quantity = element.find("span", {"class": "count"})
+            ingredient_unit = element.find("span", {"class": "unit"})
+            ingredient_img = element.find("img")
+            ingredients.append(
+                {
+                    "name": ingredient_name.get_text().strip(" \t\n\r")
+                    if ingredient_name
+                    else "",
+                    "quantity": ingredient_quantity.get_text().strip(" \t\n\r")
+                    if ingredient_quantity
+                    else "",
+                    "unit": ingredient_unit.get_text().strip(" \t\n\r")
+                    if ingredient_unit
+                    else "",
+                    "image": ingredient_img.get("data-srcset")
+                    .split(",")[-1]
+                    .strip()
+                    .split(" ")[0]
+                    if ingredient_img and ingredient_img.get("data-srcset")
+                    else "",
+                }
+            )
+        return ingredients
 
-		try:
-			handler = urllib.request.HTTPSHandler(context=ssl._create_unverified_context())
-			opener = urllib.request.build_opener(handler)
-			response = opener.open(url)
-			html_content = response.read()
-		except urllib.error.HTTPError as e:
-			raise RecipeNotFound if e.code == 404 else e
+    @staticmethod
+    def _get_author(soup):
+        """Returns the name of the author of the recipe."""
+        return (
+            soup.find("span", {"class": "recipe-author-note__author-name"})
+            .get_text()
+            .strip(" \t\n\r")
+        )
 
-		soup = BeautifulSoup(html_content, 'html.parser')
+    @staticmethod
+    def _get_author_tip(soup):
+        """Returns the author's tip for the recipe."""
+        return (
+            soup.find("div", {"class": "mrtn-hide-on-print recipe-author-note"})
+            .find("i")
+            .get_text()
+            .replace("\xa0", " ")
+            .replace("\r\n", " ")
+            .replace("  ", " ")
+            .replace("« ", "")
+            .replace(" »", "")
+        )
 
-		elements = [
-			{"name": "name", "default_value": ""},
-			{"name": "plate_type", "default_value": ""},
-			{"name": "is_vegetarian", "default_value": False},
-			{"name": "is_gluten_free", "default_value": False},
-			{"name": "is_vegan", "default_value": False},
-			{"name": "ingredients", "default_value": []},
-			{"name": "author", "default_value": "Anonyme"},
-			{"name": "author_tip", "default_value": ""},
-			{"name": "steps", "default_value": []},
-			{"name": "image_recipe", "default_value": ""},
-			{"name": "images", "default_value": []},
-			{"name": "rate", "default_value": 0.0},
-			{"name": "difficulty", "default_value": ""},
-			{"name": "budget", "default_value": ""},
-			{"name": "cook_time_min", "default_value": 0},
-			{"name": "prep_time_min", "default_value": 0},
-			{"name": "total_time_min", "default_value": 0},
-			{"name": "recipe_quantity", "default_value": ""},
-			{"name": "nb_comments", "default_value": 0},
-		]
+    @staticmethod
+    def _get_steps(soup):
+        """Returns a list of preparation steps for the recipe."""
+        return [
+            step.parent.parent.find("p").get_text().strip(" \t\n\r")
+            for step in soup.find_all("span", text=re.compile("^Étape"))
+        ]
 
-		data = {"url": url}
-		for element in elements:
-			try:
-				data[element["name"]] = getattr(cls, "_get_" + element["name"])(soup)
-			except:
-				data[element["name"]] = element["default_value"]
-		return data
+    @staticmethod
+    def _get_image_recipe(soup):
+        """Returns the main image URL of the recipe."""
+        # Main picture of the recipe (some recipes do not have a main picture)
+        imgComponent = soup.find("img", {"id": "recipe-media-viewer-main-picture"})
+        if imgComponent is not None:
+            return imgComponent.get("data-src")
+        # Return the first thumbnail of the recipe. There are multiple pictures
+        # resolution, so we take the last one (the biggest one)
+        return (
+            soup.find("img", {"id": "recipe-media-viewer-thumbnail-0"})
+            .get("data-srcset")
+            .split(",")[-1]
+            .strip()
+            .split(" ")[0]
+        )
+
+    @staticmethod
+    def _get_images(soup):
+        """Returns a list of image URLs associated with the recipe (not only the main
+        image of the recipe)."""
+        return [
+            img.get("data-src")
+            for img in soup.find_all("img", {"height": 150})
+            if img.get("data-src")
+        ]
+
+    @staticmethod
+    def _get_rate(soup):
+        """Returns the recipe rate as a string."""
+        return float(
+            soup.find("span", {"class": "recipe-header__rating-text"})
+            .get_text()
+            .split("/")[0]
+        )
+
+    @classmethod
+    def _get_difficulty(cls, soup):
+        """Returns the difficulty level of the recipe."""
+        difficulty_text = (
+            soup.find_all("div", {"class": "recipe-primary__item"})[1]
+            .find("span")
+            .get_text()
+            .strip(" \t\n\r")
+        )
+        if difficulty_text == "très facile":
+            return "very_easy"
+        elif difficulty_text == "facile":
+            return "easy"
+        elif difficulty_text == "moyenne":
+            return "medium"
+        elif difficulty_text == "difficile":
+            return "advanced"
+        else:
+            return ""
+
+    @classmethod
+    def _get_budget(cls, soup):
+        """Returns the budget level of the recipe."""
+        budget_text = (
+            soup.find_all("div", {"class": "recipe-primary__item"})[2]
+            .find("span")
+            .get_text()
+            .strip(" \t\n\r")
+        )
+        if budget_text == "bon marché":
+            return "cheap"
+        elif budget_text == "moyen":
+            return "medium"
+        elif budget_text == "assez cher":
+            return "expensive"
+        else:
+            return ""
+
+    @staticmethod
+    def _get_cook_time_min(soup):
+        """Returns the cooking time for the recipe (in minutes)."""
+        cook_time = soup.find_all(text=re.compile("Cuisson"))[
+            0
+        ].parent.next_sibling.next_sibling.get_text()
+        return parse_duration_to_minutes(cook_time)
+
+    @staticmethod
+    def _get_prep_time_min(soup):
+        """Returns the preparation time for the recipe (in minutes)."""
+        preparation_time = (
+            soup.find_all(text=re.compile("Préparation"))[1]
+            .parent.next_sibling.next_sibling.get_text()
+            .replace("\xa0", " ")
+        )
+        return parse_duration_to_minutes(preparation_time)
+
+    @classmethod
+    def _get_total_time_min(cls, soup):
+        """Returns the total time for the recipe (in minutes)."""
+        total_time = (
+            soup.find_all("div", {"class": "recipe-primary__item"})[0]
+            .find("span")
+            .get_text()
+            .strip(" \t\n\r")
+        )
+        return parse_duration_to_minutes(total_time)
+
+    @staticmethod
+    def _get_recipe_quantity(soup):
+        """Returns the recipe quantity or number of servings."""
+        divRecipeQuantity = soup.find(
+            "div", {"class": "mrtn-recette_ingredients-counter"}
+        )
+        return (
+            divRecipeQuantity["data-servingsnb"]
+            + " "
+            + divRecipeQuantity["data-servingsunit"]
+        )
+
+    @staticmethod
+    def _get_nb_comments(soup):
+        """Returns the number of comments on the recipe."""
+        return int(
+            soup.find("div", {"class": "recipe-header__comment"})
+            .find("a")
+            .get_text()
+            .strip(" \t\n\r")
+            .split(" ")[0]
+        )
+
+    @classmethod
+    def get(cls, url):
+        """'url' from 'search' method.
+
+        ex. "https://www.marmiton.org/recettes/recette_boeuf-bourguignon_18889.aspx"
+        """
+
+        try:
+            handler = urllib.request.HTTPSHandler(
+                context=ssl._create_unverified_context()
+            )
+            opener = urllib.request.build_opener(handler)
+            response = opener.open(url)
+            html_content = response.read()
+        except urllib.error.HTTPError as e:
+            raise RecipeNotFound if e.code == 404 else e
+
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        elements = [
+            {"name": "name", "default_value": ""},
+            {"name": "plate_type", "default_value": ""},
+            {"name": "is_vegetarian", "default_value": False},
+            {"name": "is_gluten_free", "default_value": False},
+            {"name": "is_vegan", "default_value": False},
+            {"name": "ingredients", "default_value": []},
+            {"name": "author", "default_value": "Anonyme"},
+            {"name": "author_tip", "default_value": ""},
+            {"name": "steps", "default_value": []},
+            {"name": "image_recipe", "default_value": ""},
+            {"name": "images", "default_value": []},
+            {"name": "rate", "default_value": 0.0},
+            {"name": "difficulty", "default_value": ""},
+            {"name": "budget", "default_value": ""},
+            {"name": "cook_time_min", "default_value": 0},
+            {"name": "prep_time_min", "default_value": 0},
+            {"name": "total_time_min", "default_value": 0},
+            {"name": "recipe_quantity", "default_value": ""},
+            {"name": "nb_comments", "default_value": 0},
+        ]
+
+        data = {"url": url}
+        for element in elements:
+            try:
+                data[element["name"]] = getattr(cls, "_get_" + element["name"])(soup)
+            except Exception:
+                data[element["name"]] = element["default_value"]
+        return data
