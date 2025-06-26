@@ -1,5 +1,7 @@
 # API Marmiton (Python)
 
+[![CI](https://github.com/COP-AMACO/scraping-marmiton/actions/workflows/ci.yml/badge.svg)](https://github.com/COP-AMACO/scraping-marmiton/actions/workflows/ci.yml)
+
 Ce projet permet de rechercher et d'obtenir des recettes du site [marmiton.org](https://www.marmiton.org/) via une API Python non officielle (web scraper). 
 
 C'est un *fork* d'un projet existant [python-marmiton](https://github.com/remaudcorentin-dev/python-marmiton) développé par [Corentin Remaud](https://github.com/remaudcorentin-dev).
