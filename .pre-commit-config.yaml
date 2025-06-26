@@ -1,0 +1,19 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.0 # Ruff version
+    hooks:
+      # Run the linter
+      - id: ruff-check
+        args: [ --fix ]
+      # Run the formatter
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: docformatter
+        name: docformatter
+        entry: docformatter
+        language: python
+        additional_dependencies: [docformatter]
+        types: [python]
+        args: ["--in-place", "--wrap-summaries", "88", "--wrap-descriptions", "88"]
