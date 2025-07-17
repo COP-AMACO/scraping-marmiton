@@ -8,6 +8,7 @@ import urllib.request
 from bs4 import BeautifulSoup
 
 from marmiton.parse_duration import parse_duration_to_minutes
+from marmiton.simplify_string import simplify_string
 
 
 class RecipeNotFound(Exception):
@@ -184,6 +185,7 @@ class Marmiton(object):
         """Returns a list of ingredients for the recipe. Each item is a dictionary with
         keys:
 
+        - 'id': the simplified data-name of the ingredient
         - 'name': the name of the ingredient
         - 'quantity': the quantity of the ingredient
         - 'unit': the unit of measurement for the ingredient
@@ -191,13 +193,16 @@ class Marmiton(object):
         """
         ingredients = []
         for element in soup.find_all("div", {"class": "card-ingredient"}):
+            ingredient_id = element.get("data-name")
             ingredient_name = element.find("span", {"class": "ingredient-name"})
             ingredient_quantity = element.find("span", {"class": "count"})
             ingredient_unit = element.find("span", {"class": "unit"})
             ingredient_img = element.find("img")
             ingredients.append(
                 {
-                    "name": ingredient_name.get_text().strip(" \t\n\r")
+                    "id": simplify_string(ingredient_id) if ingredient_id else "",
+                    "name": ingredient_name.get_text().strip(" \t\n\r")[:1].upper()
+                    + ingredient_name.get_text().strip(" \t\n\r")[1:]
                     if ingredient_name
                     else "",
                     "quantity": ingredient_quantity.get_text().strip(" \t\n\r")
