@@ -4,9 +4,10 @@ import re
 def parse_duration_to_minutes(duration: str) -> int:
     """Converts a string (e.g., "1h10", "12 min", "1 h") to minutes.
 
-    Input:
+    Args:
         duration (str): The duration to convert formatted like "1h10", "12 min", "1 h"
-    Output:
+
+    Returns:
         int: The duration in minutes.
     """
     duration = duration.lower().replace(" ", "")
