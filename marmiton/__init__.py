@@ -7,6 +7,7 @@ import urllib.request
 
 from bs4 import BeautifulSoup
 
+from marmiton.extract_id_from_url import extract_id_from_url
 from marmiton.parse_duration import parse_duration_to_minutes
 from marmiton.simplify_string import simplify_string
 
@@ -46,7 +47,8 @@ class Marmiton(object):
                     (total time in minutes: <= 15, 30, or 45)
         """
 
-        base_url = "http://www.marmiton.org/recettes/recherche.aspx?"
+        domain = "https://www.marmiton.org"
+        base_url = domain + "/recettes/recherche.aspx?"
         query_url = urllib.parse.urlencode(query_dict)
 
         url = base_url + query_url
@@ -66,55 +68,18 @@ class Marmiton(object):
         search_data = []
 
         articles = soup.find_all("a", href=True)
-        articles = [
-            a
-            for a in articles
-            if a["href"].startswith("https://www.marmiton.org/recettes/recette")
-        ]
+        articles = [a for a in articles if a["href"].startswith("/recettes/recette_")]
 
         iterarticles = iter(articles)
         for article in iterarticles:
             data = {}
             try:
-                data["name"] = article.find("h4").get_text().strip(" \t\n\r")
-                data["url"] = article["href"]
-                # Image
-                try:
-                    data["image"] = article.find("img")["data-src"]
-                except Exception:
-                    try:
-                        data["image"] = article.find("img")["src"]
-                    except Exception:
-                        pass
-                    pass
-                # Rate
-                try:
-                    data["rate"] = float(
-                        article.find("div", {"class": "mrtn-home-rating__rating"})
-                        .get_text()
-                        .strip(" \t\n\r")
-                        .split("/")[0]
-                    )
-                except Exception:
-                    data["rate"] = 0.0
-                    pass
-                # Number of comments
-                try:
-                    data["nb_comments"] = int(
-                        article.find("div", {"class": "mrtn-home-rating__nbreviews"})
-                        .get_text()
-                        .strip(" \t\n\r")
-                        .split(" ")[0]
-                    )
-                except Exception:
-                    data["nb_comments"] = 0
-                    pass
-
+                data["name"] = article.get_text().strip(" \t\n\r")
+                data["url"] = domain + article["href"]
             except Exception:
                 pass
             if data:
                 search_data.append(data)
-
         return search_data
 
     @staticmethod
@@ -185,7 +150,7 @@ class Marmiton(object):
         """Returns a list of ingredients for the recipe. Each item is a dictionary with
         keys:
 
-        - 'id': the simplified data-name of the ingredient
+        - 'id': the ID extracted from image URL or simplified name of the ingredient
         - 'name': the name of the ingredient
         - 'quantity': the quantity of the ingredient
         - 'unit': the unit of measurement for the ingredient
@@ -193,30 +158,47 @@ class Marmiton(object):
         """
         ingredients = []
         for element in soup.find_all("div", {"class": "card-ingredient"}):
-            ingredient_id = element.get("data-name")
             ingredient_name = element.find("span", {"class": "ingredient-name"})
             ingredient_quantity = element.find("span", {"class": "count"})
             ingredient_unit = element.find("span", {"class": "unit"})
             ingredient_img = element.find("img")
+
+            # Return the first image URL of the ingredient. There are multiple pictures
+            # resolution, so we take the last one (the biggest one)
+            image_url = ""
+            if ingredient_img and ingredient_img.get("data-srcset"):
+                image_url = (
+                    ingredient_img.get("data-srcset")
+                    .split(",")[-1]
+                    .strip()
+                    .split(" ")[0]
+                )
+
+            # Extract the name of the ingredient and format it
+            # (first letter uppercase, the rest lowercase)
+            name = (
+                ingredient_name.get_text().strip(" \t\n\r")[:1].upper()
+                + ingredient_name.get_text().strip(" \t\n\r")[1:]
+                if ingredient_name
+                else ""
+            )
+
+            # Extract ID from image URL or use simplify_string
+            ingredient_id = extract_id_from_url(image_url)
+            if ingredient_id is None:
+                ingredient_id = simplify_string(name)
+
             ingredients.append(
                 {
-                    "id": simplify_string(ingredient_id) if ingredient_id else "",
-                    "name": ingredient_name.get_text().strip(" \t\n\r")[:1].upper()
-                    + ingredient_name.get_text().strip(" \t\n\r")[1:]
-                    if ingredient_name
-                    else "",
+                    "id": ingredient_id,
+                    "name": name,
                     "quantity": ingredient_quantity.get_text().strip(" \t\n\r")
                     if ingredient_quantity
                     else "",
                     "unit": ingredient_unit.get_text().strip(" \t\n\r")
                     if ingredient_unit
                     else "",
-                    "image": ingredient_img.get("data-srcset")
-                    .split(",")[-1]
-                    .strip()
-                    .split(" ")[0]
-                    if ingredient_img and ingredient_img.get("data-srcset")
-                    else "",
+                    "image": image_url,
                 }
             )
         return ingredients
