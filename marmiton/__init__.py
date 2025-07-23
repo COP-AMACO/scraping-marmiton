@@ -188,16 +188,34 @@ class Marmiton(object):
             if ingredient_id is None:
                 ingredient_id = simplify_string(name)
 
+            ingredient_quantity = (
+                ingredient_quantity.get_text().strip(" \t\n\r")
+                if ingredient_quantity
+                else None
+            )
+            if ingredient_quantity == "":
+                ingredient_quantity = None
+            if ingredient_quantity:
+                ingredient_quantity = float(ingredient_quantity)
+
+            unitSingular = (
+                ingredient_unit.get("data-unitsingular").strip(" \t\n\r")
+                if ingredient_unit
+                else ""
+            )
+            unitPlural = (
+                ingredient_unit.get("data-unitplural").strip(" \t\n\r")
+                if ingredient_unit
+                else ""
+            )
+
             ingredients.append(
                 {
                     "id": ingredient_id,
                     "name": name,
-                    "quantity": ingredient_quantity.get_text().strip(" \t\n\r")
-                    if ingredient_quantity
-                    else "",
-                    "unit": ingredient_unit.get_text().strip(" \t\n\r")
-                    if ingredient_unit
-                    else "",
+                    "quantity": ingredient_quantity,
+                    "unit_singular": unitSingular,
+                    "unit_plural": unitPlural,
                     "image": image_url,
                 }
             )
@@ -338,16 +356,15 @@ class Marmiton(object):
         return parse_duration_to_minutes(total_time)
 
     @staticmethod
-    def _get_recipe_quantity(soup):
+    def _get_quantity(soup):
         """Returns the recipe quantity or number of servings."""
         divRecipeQuantity = soup.find(
             "div", {"class": "mrtn-recette_ingredients-counter"}
         )
-        return (
-            divRecipeQuantity["data-servingsnb"]
-            + " "
-            + divRecipeQuantity["data-servingsunit"]
-        )
+        return {
+            "count": divRecipeQuantity["data-servingsnb"],
+            "unit": divRecipeQuantity["data-servingsunit"] or None,
+        }
 
     @staticmethod
     def _get_nb_comments(soup):
@@ -397,7 +414,7 @@ class Marmiton(object):
             {"name": "cook_time_min", "default_value": 0},
             {"name": "prep_time_min", "default_value": 0},
             {"name": "total_time_min", "default_value": 0},
-            {"name": "recipe_quantity", "default_value": ""},
+            {"name": "quantity", "default_value": ""},
             {"name": "nb_comments", "default_value": 0},
         ]
 
