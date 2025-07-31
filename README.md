@@ -9,16 +9,25 @@ C'est un *fork* d'un projet existant [python-marmiton](https://github.com/remaud
 
 ## Installation :
 
-```PowerShell
-# PowerShell
-python -m venv venv
-venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-# Command prompt
-python -m venv venv
-venv\Scripts\activate.bat
-pip install -r requirements.txt
-```
+1. Créer un environnement virtuel Python :
+    ```bash
+    python -m venv venv
+    ```
+
+2. Activer l'environnement virtuel :
+    ```bash
+    # Windows PowerShell
+    venv\Scripts\Activate.ps1
+    # Windows Command Prompt
+    venv\Scripts\activate.bat
+    # MacOS/Linux
+    source venv/bin/activate
+    ```
+
+3. Installer les dépendances :
+    ```bash
+    pip install -r requirements.txt
+    ```
 
 
 ## Référence de l'API :
