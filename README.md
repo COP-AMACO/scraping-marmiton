@@ -14,6 +14,10 @@ C'est un *fork* d'un projet existant [python-marmiton](https://github.com/remaud
 python -m venv venv
 venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+# Command prompt
+python -m venv venv
+venv\Scripts\activate.bat
+pip install -r requirements.txt
 ```
 
 
